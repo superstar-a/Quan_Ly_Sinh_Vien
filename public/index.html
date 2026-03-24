@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quản Lý Sinh Viên</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    body { background: #f0f2f5; }
+    .navbar { background: linear-gradient(135deg, #1e3c72, #2a69ac); }
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .table thead { background: #1e3c72; color: white; }
+    .table tbody tr:hover { background: #eef4ff; }
+    .btn-action { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .badge-nam { background: #3b82f6; }
+    .badge-nu { background: #ec4899; }
+    .badge-khac { background: #8b5cf6; }
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark px-4 py-3 mb-4">
+  <span class="navbar-brand fw-bold fs-4"><i class="bi bi-mortarboard-fill me-2"></i>Quản Lý Sinh Viên</span>
+  <span class="text-white-50 small">Node.js + MongoDB</span>
+</nav>
+
+<div class="container">
+
+  <!-- Thanh tìm kiếm + nút thêm -->
+  <div class="card mb-3 p-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" id="searchInput" class="form-control" placeholder="Tìm theo tên, mã SV, lớp..."/>
+        </div>
+      </div>
+      <div class="col-auto ms-auto">
+        <button class="btn btn-primary" onclick="openAddModal()">
+          <i class="bi bi-plus-circle me-1"></i>Thêm sinh viên
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bảng danh sách -->
+  <div class="card">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0 rounded overflow-hidden">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mã SV</th>
+            <th>Họ tên</th>
+            <th>Ngày sinh</th>
+            <th>Giới tính</th>
+            <th>Email</th>
+            <th>Lớp</th>
+            <th class="text-center">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="8" class="text-center py-4 text-muted">Đang tải...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+      <small class="text-muted">Tổng: <strong id="totalCount">0</strong> sinh viên</small>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thêm / Sửa -->
+<div class="modal fade" id="svModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background: #1e3c72; color: white;">
+        <h5 class="modal-title" id="modalTitle"><i class="bi bi-person-plus me-2"></i>Thêm sinh viên</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="svForm">
+          <input type="hidden" id="svId"/>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Mã sinh viên <span class="text-danger">*</span></label>
+              <input type="text" id="maSV" class="form-control" placeholder="VD: SV001" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Họ tên <span class="text-danger">*</span></label>
+              <input type="text" id="hoTen" class="form-control" placeholder="VD: Nguyễn Văn A" required/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ngày sinh</label>
+              <input type="date" id="ngaySinh" class="form-control"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Giới tính</label>
+              <select id="gioiTinh" class="form-select">
+                <option value="">-- Chọn --</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" id="email" class="form-control" placeholder="VD: sv@gmail.com"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Lớp</label>
+              <input type="text" id="lop" class="form-control" placeholder="VD: CNTT01"/>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button class="btn btn-primary" onclick="saveStudent()">
+          <i class="bi bi-save me-1"></i>Lưu
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Xác nhận xóa</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc muốn xóa sinh viên <strong id="deleteStudentName"></strong>?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete()">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast thông báo -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const API = '/api/sinhvien';
+  let allStudents = [];
+  let deleteId = null;
+
+  const svModal = new bootstrap.Modal(document.getElementById('svModal'));
+  const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+  // Load danh sách
+  async function loadStudents() {
+    try {
+      const res = await fetch(API);
+      allStudents = await res.json();
+      renderTable(allStudents);
+    } catch {
+      showToast('Không thể kết nối server!', 'danger');
+    }
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('tableBody');
+    document.getElementById('totalCount').textContent = data.length;
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Không có dữ liệu</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map((sv, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><code>${sv.maSV}</code></td>
+        <td class="fw-semibold">${sv.hoTen}</td>
+        <td>${sv.ngaySinh ? new Date(sv.ngaySinh).toLocaleDateString('vi-VN') : '—'}</td>
+        <td>${sv.gioiTinh ? `<span class="badge badge-${sv.gioiTinh === 'Nam' ? 'nam' : sv.gioiTinh === 'Nữ' ? 'nu' : 'khac'}">${sv.gioiTinh}</span>` : '—'}</td>
+        <td>${sv.email || '—'}</td>
+        <td>${sv.lop || '—'}</td>
+        <td class="text-center">
+          <button class="btn btn-outline-warning btn-action me-1" title="Sửa" onclick="openEditModal('${sv._id}')">
+            <i class="bi bi-pencil-fill"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-action" title="Xóa" onclick="openDeleteModal('${sv._id}', '${sv.hoTen}')">
+            <i class="bi bi-trash-fill"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Tìm kiếm
+  document.getElementById('searchInput').addEventListener('input', function () {
+    const q = this.value.toLowerCase();
+    const filtered = allStudents.filter(sv =>
+      sv.hoTen.toLowerCase().includes(q) ||
+      sv.maSV.toLowerCase().includes(q) ||
+      (sv.lop || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  });
+
+  // Mở modal thêm
+  function openAddModal() {
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-person-plus me-2"></i>Thêm sinh viên';
+    document.getElementById('svForm').reset();
+    document.getElementById('svId').value = '';
+    svModal.show();
+  }
+
+  // Mở modal sửa
+  function openEditModal(id) {
+    const sv = allStudents.find(s => s._id === id);
+    if (!sv) return;
+    document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Sửa sinh viên';
+    document.getElementById('svId').value = sv._id;
+    document.getElementById('maSV').value = sv.maSV;
+    document.getElementById('hoTen').value = sv.hoTen;
+    document.getElementById('ngaySinh').value = sv.ngaySinh ? sv.ngaySinh.substring(0, 10) : '';
+    document.getElementById('gioiTinh').value = sv.gioiTinh || '';
+    document.getElementById('email').value = sv.email || '';
+    document.getElementById('lop').value = sv.lop || '';
+    svModal.show();
+  }
+
+  // Lưu (thêm hoặc sửa)
+  async function saveStudent() {
+    const id = document.getElementById('svId').value;
+    const body = {
+      maSV: document.getElementById('maSV').value.trim(),
+      hoTen: document.getElementById('hoTen').value.trim(),
+      ngaySinh: document.getElementById('ngaySinh').value || undefined,
+      gioiTinh: document.getElementById('gioiTinh').value || undefined,
+      email: document.getElementById('email').value.trim() || undefined,
+      lop: document.getElementById('lop').value.trim() || undefined,
+    };
+    if (!body.maSV || !body.hoTen) {
+      showToast('Vui lòng nhập Mã SV và Họ tên!', 'warning');
+      return;
+    }
+    try {
+      const res = await fetch(id ? `${API}/${id}` : API, {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.message || 'Lỗi!', 'danger');
+        return;
+      }
+      svModal.hide();
+      showToast(id ? 'Cập nhật thành công!' : 'Thêm sinh viên thành công!', 'success');
+      loadStudents();
+    } catch {
+      showToast('Lỗi kết nối server!', 'danger');
+    }
+  }
+
+  // Mở modal xóa
+  function openDeleteModal(id, name) {
+    deleteId = id;
+    document.getElementById('deleteStudentName').textContent = name;
+    deleteModal.show();
+  }
+
+  // Xác nhận xóa
+  async function confirmDelete() {
+    try {
+      await fetch(`${API}/${deleteId}`, { method: 'DELETE' });
+      deleteModal.hide();
+      showToast('Đã xóa thành công!', 'success');
+      loadStudents();
+    } catch {
+      showToast('Lỗi kết nối server!', 'danger');
+    }
+  }
+
+  // Toast thông báo
+  function showToast(msg, type = 'success') {
+    const id = 'toast-' + Date.now();
+    const icons = { success: 'check-circle-fill', danger: 'x-circle-fill', warning: 'exclamation-triangle-fill' };
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div id="${id}" class="toast align-items-center text-white bg-${type} border-0 mb-2 show" role="alert">
+        <div class="d-flex">
+          <div class="toast-body"><i class="bi bi-${icons[type]} me-2"></i>${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  // Khởi động
+  loadStudents();
+</script>
+</body>
+</html>
